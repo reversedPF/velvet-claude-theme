@@ -1,0 +1,6 @@
+{
+  "name": "velvet-claude-theme",
+  "description": "Velvet, a dark purple theme for the Claude app",
+  "owner": { "name": "reversedPF" },
+  "plugins": [{ "name": "velvet", "source": "./" }]
+}
