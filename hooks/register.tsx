@@ -38,9 +38,9 @@ const NAMES = Object.keys(VARIANTS).join(', ')
 const isVariant = (name: unknown): name is Variant =>
   typeof name === 'string' && Object.hasOwn(VARIANTS, name)
 
-// How far the app frosts its panels over the glow, in points (0 to 64). Light by default,
+// How far the app frosts its panels over the glow, in points (0 to 64). None by default,
 // so the backdrop stays crisp; /velvet blur <n> changes it.
-const DEFAULT_BLUR = 6
+const DEFAULT_BLUR = 0
 
 // Appended to a scene to hold it still.
 const STILL = '<style>*{animation:none!important}</style></svg>'
@@ -53,7 +53,7 @@ async function chosen($: EngineInterface): Promise<Choice> {
   const blur = await $.store.get('blur')
 
   return {
-    variant: isVariant(variant) ? variant : 'classic',
+    variant: isVariant(variant) ? variant : 'silk',
     isStill,
     blur: typeof blur === 'number' && blur >= 0 && blur <= 64 ? blur : DEFAULT_BLUR,
   }

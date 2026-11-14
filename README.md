@@ -6,11 +6,11 @@ It comes with five backdrops:
 
 | Backdrop | What it is |
 | --- | --- |
-| `classic` | The default: drifting plum and rose glows with a soft silk ribbon |
+| `classic` | Drifting plum and rose glows with a soft silk ribbon |
 | `satin` | The ribbon sways, and a sweep of light runs along it every 13 seconds |
 | `glass` | Frosted glass forms float in the glow and bend the light behind them |
 | `motes` | Soft, warm specks of light rise slowly at three depths |
-| `silk` | Six ribbons of plum, violet and rose light flowing at different depths |
+| `silk` | The default: six ribbons of plum, violet and rose light flowing at different depths |
 
 ## Install
 
@@ -36,7 +36,7 @@ Type these in the chat:
 
 - `/velvet classic`, `/velvet satin`, `/velvet glass`, `/velvet motes`, `/velvet silk` switch the backdrop
 - `/velvet still` holds the motion still, `/velvet move` starts it again
-- `/velvet blur 0-64` sets how much the app frosts its panels over the backdrop (default 6; higher is softer and easier to read over)
+- `/velvet blur 0-64` sets how much the app frosts its panels over the backdrop (default 0, no frosting; higher is softer and easier to read over)
 - `/velvet` alone says what is on now
 
 Your choice is remembered across sessions.
