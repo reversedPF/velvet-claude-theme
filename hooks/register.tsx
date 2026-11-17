@@ -42,21 +42,7 @@ const isVariant = (name: unknown): name is Variant =>
 // so the backdrop stays crisp; /velvet blur <n> changes it.
 const DEFAULT_BLUR = 0
 
-// Appended to a scene to hold it still.
-const STILL = '<style>*{animation:none!important}</style></svg>'
-
 type Choice = { variant: Variant; isStill: boolean; blur: number }
-
-// Set when session.start pinned "nothing draws it yet": the desktop app usually attaches
-// after the session starts, so the first backdrop drawn (or a /velvet that draws) clears it.
-let isNoticePinned = false
-
-function clearNotice($: EngineInterface) {
-  if (isNoticePinned) {
-    isNoticePinned = false
-    $.ui.status(undefined)
-  }
-}
 
 async function chosen($: EngineInterface): Promise<Choice> {
   const variant = await $.store.get('variant')
@@ -71,13 +57,11 @@ async function chosen($: EngineInterface): Promise<Choice> {
 }
 
 async function apply($: EngineInterface, { variant, isStill, blur }: Choice) {
-  const look: ThemeSetArgs = {
-    colors: theme,
-    backdrop: {
-      scene: `velvet-${variant}${isStill ? '-still' : ''}`,
-      glass: { blur, tint: '#140e1f', opacity: 0.58 },
-    },
-  }
+  // Still: the scene pre-rendered to a JPEG (tools/render-stills.py), a picture the app
+  // decodes once, so no SVG filter ever runs on the GPU. Moving: the live SVG scene.
+  const look: ThemeSetArgs = isStill
+    ? { colors: theme, backdrop: { image: { source: `stills/velvet-${variant}.jpg` } } }
+    : { colors: theme, backdrop: { scene: `velvet-${variant}`, glass: { blur, tint: '#140e1f', opacity: 0.58 } } }
 
   return $.theme.set(look)
 }
@@ -93,15 +77,9 @@ export const register: Register = on => {
       name: 'velvet',
       description: `Switch the Velvet backdrop (${NAMES}), hold it still / move, or set blur 0-64`,
     })
-    const set = await apply($, await chosen($))
-
-    if (!set.isDrawn) {
-      isNoticePinned = true
-      $.ui.status(set.reason)
-    } else {
-      // A reload resets isNoticePinned, so drop any notice an earlier load left behind.
-      $.ui.status(undefined)
-    }
+    // The desktop app attaches after the session starts, so this set is usually not drawn
+    // yet; the theme stands and draws when it attaches, so there is nothing to report.
+    await apply($, await chosen($))
 
     return next(e)
   })
@@ -110,7 +88,7 @@ export const register: Register = on => {
     const [word = '', amount] = e.args.trim().toLowerCase().split(/\s+/)
     const now = await chosen($)
     const next: Choice = { ...now }
-    const describe = (c: Choice) => `${c.variant}${c.isStill ? ', held still' : ''}, blur ${c.blur}`
+    const describe = (c: Choice) => `${c.variant}${c.isStill ? ', held still (a picture; blur applies when moving)' : `, blur ${c.blur}`}`
 
     if (isVariant(word)) {
       next.variant = word
@@ -133,28 +111,20 @@ export const register: Register = on => {
     if (!set.isDrawn) {
       return { text: `Saved, but nothing draws it here: ${set.reason}` }
     }
-    clearNotice($)
 
     return { text: `Velvet: ${describe(next)}.` }
   })
 
+  // Draws the moving scenes; a still backdrop is a picture and never reaches this hook.
   on('ui.render', { component: 'Backdrop' }, ($, e, next) => {
-    const match = /^velvet-([a-z]+)(-still)?$/.exec(e.props.scene)
+    const match = /^velvet-([a-z]+)$/.exec(e.props.scene)
 
     if ((e.surface !== 'desktop' && e.surface !== 'mobile') || match === null || !isVariant(match[1])) {
       return next(e)
     }
-    clearNotice($)
     const { svg, alt } = VARIANTS[match[1]]
     const { Svg } = $.ui.resolve(e)
 
-    // Moving: a live frame, so the CSS animation runs. Still: a plain image, which the app
-    // rasterizes once and reuses, instead of a live frame that keeps the large blur filters
-    // on the GPU and can redraw them on every repaint of the panels above it.
-    if (match[2] === undefined) {
-      return <Svg source={svg} alt={alt} isInteractive />
-    }
-
-    return <Svg source={svg.replace('</svg>', STILL)} alt={alt} />
+    return <Svg source={svg} alt={alt} isInteractive />
   })
 }

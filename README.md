@@ -35,7 +35,7 @@ In the desktop app, where `/plugin` does not run: click + next to the prompt box
 Type these in the chat:
 
 - `/velvet classic`, `/velvet satin`, `/velvet glass`, `/velvet motes`, `/velvet silk` switch the backdrop
-- `/velvet still` holds the motion still, `/velvet move` starts it again
+- `/velvet still` holds the motion still, `/velvet move` starts it again. Still shows the scene as a pre-rendered picture, so it costs almost no GPU: use it on a laptop or a modest graphics card
 - `/velvet blur 0-64` sets how much the app frosts its panels over the backdrop (default 0, no frosting; higher is softer and easier to read over)
 - `/velvet` alone says what is on now
 
@@ -55,6 +55,12 @@ node tools/generate-scenes.js ./out hooks/scenes.ts
 ```
 
 It also writes each scene as a standalone SVG into `./out` for previewing in a browser. Keep each scene under 131,072 characters.
+
+Then render the still pictures from those SVGs (needs Chrome or Edge, and Pillow); keep each JPEG under 1 MiB:
+
+```bash
+python tools/render-stills.py ./out stills
+```
 
 ## License
 
