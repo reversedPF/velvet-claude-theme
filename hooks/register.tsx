@@ -147,8 +147,14 @@ export const register: Register = on => {
     clearNotice($)
     const { svg, alt } = VARIANTS[match[1]]
     const { Svg } = $.ui.resolve(e)
-    const source = match[2] === undefined ? svg : svg.replace('</svg>', STILL)
 
-    return <Svg source={source} alt={alt} isInteractive />
+    // Moving: a live frame, so the CSS animation runs. Still: a plain image, which the app
+    // rasterizes once and reuses, instead of a live frame that keeps the large blur filters
+    // on the GPU and can redraw them on every repaint of the panels above it.
+    if (match[2] === undefined) {
+      return <Svg source={svg} alt={alt} isInteractive />
+    }
+
+    return <Svg source={svg.replace('</svg>', STILL)} alt={alt} />
   })
 }
