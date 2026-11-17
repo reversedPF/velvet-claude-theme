@@ -1,7 +1,7 @@
 import type { EngineInterface, Register, ThemeSetArgs } from 'claude-code'
 
 import { makeColors } from './make-colors.js'
-import { CLASSIC, GLASS, MOTES, SATIN, SILK } from './scenes'
+import { CLASSIC, CLASSIC_STILL, GLASS, GLASS_STILL, MOTES, MOTES_STILL, SATIN, SATIN_STILL, SILK, SILK_STILL } from './scenes'
 
 // Dark velvet: plum-tinted surfaces, lavender accent, rose highlights.
 const { theme, problems } = makeColors({
@@ -24,11 +24,11 @@ const { theme, problems } = makeColors({
 })
 
 const VARIANTS = {
-  classic: { svg: CLASSIC, alt: 'Soft plum and rose light drifting through dark violet' },
-  satin: { svg: SATIN, alt: 'A satin ribbon of plum light catching a slow sweep of light' },
-  glass: { svg: GLASS, alt: 'Frosted glass forms floating in soft plum light' },
-  motes: { svg: MOTES, alt: 'Soft specks of warm light rising slowly through plum light' },
-  silk: { svg: SILK, alt: 'Ribbons of plum, violet and rose light flowing like silk' },
+  classic: { svg: CLASSIC, still: CLASSIC_STILL, alt: 'Soft plum and rose light drifting through dark violet' },
+  satin: { svg: SATIN, still: SATIN_STILL, alt: 'A satin ribbon of plum light catching a slow sweep of light' },
+  glass: { svg: GLASS, still: GLASS_STILL, alt: 'Frosted glass forms floating in soft plum light' },
+  motes: { svg: MOTES, still: MOTES_STILL, alt: 'Soft specks of warm light rising slowly through plum light' },
+  silk: { svg: SILK, still: SILK_STILL, alt: 'Ribbons of plum, violet and rose light flowing like silk' },
 } as const
 
 type Variant = keyof typeof VARIANTS
@@ -57,11 +57,16 @@ async function chosen($: EngineInterface): Promise<Choice> {
 }
 
 async function apply($: EngineInterface, { variant, isStill, blur }: Choice) {
-  // Still: the scene pre-rendered to a JPEG (tools/render-stills.py), a picture the app
-  // decodes once, so no SVG filter ever runs on the GPU. Moving: the live SVG scene.
-  const look: ThemeSetArgs = isStill
-    ? { colors: theme, backdrop: { image: { source: `stills/velvet-${variant}.jpg` } } }
-    : { colors: theme, backdrop: { scene: `velvet-${variant}`, glass: { blur, tint: '#140e1f', opacity: 0.58 } } }
+  // Still is the light setting: a filter-free scene drawn as a plain image, with the panels
+  // tinted but never frosted, since re-blurring the window behind them on every repaint is
+  // what costs a modest GPU most. Moving: the live scene, frosted as /velvet blur says.
+  const look: ThemeSetArgs = {
+    colors: theme,
+    backdrop: {
+      scene: `velvet-${variant}${isStill ? '-still' : ''}`,
+      glass: { blur: isStill ? 0 : blur, tint: '#140e1f', opacity: 0.58 },
+    },
+  }
 
   return $.theme.set(look)
 }
@@ -88,7 +93,7 @@ export const register: Register = on => {
     const [word = '', amount] = e.args.trim().toLowerCase().split(/\s+/)
     const now = await chosen($)
     const next: Choice = { ...now }
-    const describe = (c: Choice) => `${c.variant}${c.isStill ? ', held still (a picture; blur applies when moving)' : `, blur ${c.blur}`}`
+    const describe = (c: Choice) => `${c.variant}${c.isStill ? ', held still (light: no frosting; blur applies when moving)' : `, blur ${c.blur}`}`
 
     if (isVariant(word)) {
       next.variant = word
@@ -115,16 +120,16 @@ export const register: Register = on => {
     return { text: `Velvet: ${describe(next)}.` }
   })
 
-  // Draws the moving scenes; a still backdrop is a picture and never reaches this hook.
   on('ui.render', { component: 'Backdrop' }, ($, e, next) => {
-    const match = /^velvet-([a-z]+)$/.exec(e.props.scene)
+    const match = /^velvet-([a-z]+)(-still)?$/.exec(e.props.scene)
 
     if ((e.surface !== 'desktop' && e.surface !== 'mobile') || match === null || !isVariant(match[1])) {
       return next(e)
     }
-    const { svg, alt } = VARIANTS[match[1]]
+    const { svg, still, alt } = VARIANTS[match[1]]
     const { Svg } = $.ui.resolve(e)
 
-    return <Svg source={svg} alt={alt} isInteractive />
+    // Moving: a live frame, so the animation runs. Still: no filter, no motion, a plain image.
+    return match[2] === undefined ? <Svg source={svg} alt={alt} isInteractive /> : <Svg source={still} alt={alt} />
   })
 }
