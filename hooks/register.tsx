@@ -47,6 +47,17 @@ const STILL = '<style>*{animation:none!important}</style></svg>'
 
 type Choice = { variant: Variant; isStill: boolean; blur: number }
 
+// Set when session.start pinned "nothing draws it yet": the desktop app usually attaches
+// after the session starts, so the first backdrop drawn (or a /velvet that draws) clears it.
+let isNoticePinned = false
+
+function clearNotice($: EngineInterface) {
+  if (isNoticePinned) {
+    isNoticePinned = false
+    $.ui.status(undefined)
+  }
+}
+
 async function chosen($: EngineInterface): Promise<Choice> {
   const variant = await $.store.get('variant')
   const isStill = (await $.store.get('still')) === true
@@ -85,7 +96,11 @@ export const register: Register = on => {
     const set = await apply($, await chosen($))
 
     if (!set.isDrawn) {
+      isNoticePinned = true
       $.ui.status(set.reason)
+    } else {
+      // A reload resets isNoticePinned, so drop any notice an earlier load left behind.
+      $.ui.status(undefined)
     }
 
     return next(e)
@@ -118,6 +133,7 @@ export const register: Register = on => {
     if (!set.isDrawn) {
       return { text: `Saved, but nothing draws it here: ${set.reason}` }
     }
+    clearNotice($)
 
     return { text: `Velvet: ${describe(next)}.` }
   })
@@ -128,6 +144,7 @@ export const register: Register = on => {
     if ((e.surface !== 'desktop' && e.surface !== 'mobile') || match === null || !isVariant(match[1])) {
       return next(e)
     }
+    clearNotice($)
     const { svg, alt } = VARIANTS[match[1]]
     const { Svg } = $.ui.resolve(e)
     const source = match[2] === undefined ? svg : svg.replace('</svg>', STILL)
